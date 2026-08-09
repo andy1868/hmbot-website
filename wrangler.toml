@@ -1,0 +1,16 @@
+# Cloudflare Pages + D1 configuration for HMbot website
+# See: https://developers.cloudflare.com/pages/framework-guides/nextjs/ssr/
+
+name = "hmbot-website"
+compatibility_date = "2025-08-08"
+compatibility_flags = ["nodejs_compat"]
+
+# D1 database for order/inquiry submissions
+[[d1_databases]]
+binding = "hmbot_db"
+database_name = "hmbot-db"
+database_id = "6e0b03d9-2ac2-4e78-b7cc-a3e0168447bf"
+
+# Pages deployment
+[env.production]
+vars = { NODE_ENV = "production" }
