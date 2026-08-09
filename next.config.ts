@@ -1,18 +1,15 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Optimize for Cloudflare Pages edge runtime
-  output: "standalone",
+  // Static export for Cloudflare Pages (no SSR/API needed)
+  output: "export",
 
-  // Skip TS errors during build (pre-existing issues from strict mode)
+  // Skip TS errors during build
   typescript: {
     ignoreBuildErrors: true,
   },
 
-  // External packages that can't be bundled by the edge runtime
-  serverExternalPackages: ["sharp"],
-
-  // We handle image optimization via Cloudflare's built-in service
+  // No image optimization needed
   images: {
     unoptimized: true,
   },
