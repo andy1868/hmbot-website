@@ -1,11 +1,21 @@
 /**
  * Cloudflare D1 database adapter.
  *
- * Replaces Prisma for Cloudflare Workers runtime (Prisma requires Node.js).
- * Uses D1 binding injected by @opennextjs/cloudflare at runtime.
- *
- * The D1 binding name "hmbot_db" is configured in wrangler.toml.
+ * Replaces Prisma for Cloudflare Workers runtime.
+ * D1 binding "hmbot_db" is injected via wrangler.toml.
  */
+
+// Cloudflare Workers D1 types (no @cloudflare/workers-types dep needed)
+interface D1PreparedStatement {
+  bind(...values: unknown[]): D1PreparedStatement;
+  first<T = Record<string, unknown>>(): Promise<T | null>;
+  all<T = Record<string, unknown>>(): Promise<{ results: T[]; success: boolean }>;
+  run(): Promise<{ success: boolean }>;
+}
+
+interface D1Database {
+  prepare(query: string): D1PreparedStatement;
+}
 
 interface OrderRow {
   id: string;
@@ -40,33 +50,29 @@ export interface CreateOrderInput {
   message: string;
 }
 
-function getD1() {
-  // @opennextjs/cloudflare exposes bindings via process.env
+function getD1(): D1Database {
   const binding = (process.env as Record<string, unknown>)["hmbot_db"];
   if (!binding || typeof binding !== "object") {
     throw new Error("D1 binding 'hmbot_db' not found. Check wrangler.toml.");
   }
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return binding as any as D1Database;
+  return binding as D1Database;
 }
 
-/** Generate a unique ID (Cloudflare-compatible, no crypto dependency issues). */
-function cuid(): string {
+let cuidCounter = 0;
+function generateId(): string {
   const timestamp = Date.now().toString(36);
   const random = Math.random().toString(36).slice(2, 10);
-  const counter = cuid.counter++ % 0xffff;
-  cuid.counter = cuid.counter % 0xffff;
-  return `${timestamp}${random}${counter.toString(36)}`;
+  cuidCounter = (cuidCounter + 1) % 0xffff;
+  return `${timestamp}${random}${cuidCounter.toString(36)}`;
 }
-cuid.counter = 0;
 
 export async function createOrder(input: CreateOrderInput): Promise<OrderRow> {
   const db = getD1();
-  const id = cuid();
+  const id = generateId();
 
   const stmt = db
     .prepare(
-      `INSERT INTO orders 
+      `INSERT INTO orders
        (id, type, name, email, phone, company, country, product_id, product_name, quantity, budget, timeline, message)
        VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)
        RETURNING *`
